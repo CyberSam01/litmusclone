@@ -487,7 +487,9 @@
           <select id="client">
             <option value="apple">Apple Mail</option>
             <option value="gmail">Gmail Web</option>
-            <option value="outlook">Outlook Desktop</option>
+            <option value="outlook2013">Outlook 2013 Windows</option>
+            <option value="outlook2016">Outlook 2016 Windows</option>
+            <option value="outlook365">Outlook Microsoft 365 Windows</option>
             <option value="outlookweb">Outlook Web</option>
             <option value="yahoo">Yahoo Mail</option>
           </select>
@@ -559,6 +561,16 @@
           <div class="side-section">
             <h3>Clientsimulatie</h3>
             <table class="compat-table" id="compatibility"></table>
+          </div>
+          <div class="side-section">
+            <h3>Beschikbare opties</h3>
+            <div class="check-list">
+              <div class="check"><div class="check-head"><span class="badge ok">✓</span><div><strong>E-mail importeren</strong><p>.eml openen, slepen of ruwe bron plakken.</p></div></div></div>
+              <div class="check"><div class="check-head"><span class="badge ok">✓</span><div><strong>Weergaven</strong><p>Desktop, tablet, mobiel, light mode en dark mode.</p></div></div></div>
+              <div class="check"><div class="check-head"><span class="badge ok">✓</span><div><strong>Clientsimulaties</strong><p>Apple Mail, Gmail, Outlook 2013, Outlook 2016, Outlook 365, Outlook Web en Yahoo.</p></div></div></div>
+              <div class="check"><div class="check-head"><span class="badge ok">✓</span><div><strong>Contentcontrole</strong><p>Alt-teksten, links, preheader, uitschrijflink, tabellen en mobiele viewport.</p></div></div></div>
+              <div class="check"><div class="check-head"><span class="badge ok">✓</span><div><strong>Outlook-risico's</strong><p>Flexbox, CSS Grid, webfonts, achtergrondafbeeldingen en VML.</p></div></div></div>
+            </div>
           </div>
         </aside>
       </div>
@@ -688,51 +700,13 @@
 </html>`;
 
   const clients = {
-    apple: {
-      name: 'Apple Mail',
-      notes: [
-        ['Media queries', 'Goed'],
-        ['Webfonts', 'Meestal goed'],
-        ['Background images', 'Goed'],
-        ['CSS support', 'Hoog']
-      ]
-    },
-    gmail: {
-      name: 'Gmail Web',
-      notes: [
-        ['Media queries', 'Goed'],
-        ['Webfonts', 'Beperkt'],
-        ['Background images', 'Redelijk'],
-        ['CSS support', 'Gemiddeld']
-      ]
-    },
-    outlook: {
-      name: 'Outlook Desktop',
-      notes: [
-        ['Media queries', 'Beperkt'],
-        ['Webfonts', 'Beperkt'],
-        ['Background images', 'VML nodig'],
-        ['CSS support', 'Laag']
-      ]
-    },
-    outlookweb: {
-      name: 'Outlook Web',
-      notes: [
-        ['Media queries', 'Goed'],
-        ['Webfonts', 'Beperkt'],
-        ['Background images', 'Redelijk'],
-        ['CSS support', 'Gemiddeld']
-      ]
-    },
-    yahoo: {
-      name: 'Yahoo Mail',
-      notes: [
-        ['Media queries', 'Goed'],
-        ['Webfonts', 'Beperkt'],
-        ['Background images', 'Redelijk'],
-        ['CSS support', 'Gemiddeld']
-      ]
-    }
+    apple:{name:'Apple Mail',notes:[['Renderengine','WebKit'],['Media queries','Goed'],['Webfonts','Meestal goed'],['Background images','Goed'],['CSS support','Hoog']]},
+    gmail:{name:'Gmail Web',notes:[['Renderengine','Browser/Gmail'],['Media queries','Goed'],['Webfonts','Beperkt'],['Background images','Redelijk'],['CSS support','Gemiddeld']]},
+    outlook2013:{name:'Outlook 2013 Windows',notes:[['Renderengine','Microsoft Word'],['Media queries','Niet ondersteund'],['Webfonts','Niet ondersteund'],['Background images','VML nodig'],['Border radius','Niet ondersteund'],['CSS support','Laag']]},
+    outlook2016:{name:'Outlook 2016 Windows',notes:[['Renderengine','Microsoft Word'],['Media queries','Niet ondersteund'],['Webfonts','Niet ondersteund'],['Background images','VML nodig'],['Border radius','Niet ondersteund'],['CSS support','Laag']]},
+    outlook365:{name:'Outlook Microsoft 365 Windows',notes:[['Renderengine','Microsoft Word'],['Media queries','Beperkt'],['Webfonts','Niet ondersteund'],['Background images','VML nodig'],['Border radius','Niet ondersteund'],['CSS support','Laag']]},
+    outlookweb:{name:'Outlook Web',notes:[['Renderengine','Browser'],['Media queries','Goed'],['Webfonts','Beperkt'],['Background images','Redelijk'],['CSS support','Gemiddeld']]},
+    yahoo:{name:'Yahoo Mail',notes:[['Renderengine','Browser/Yahoo'],['Media queries','Goed'],['Webfonts','Beperkt'],['Background images','Redelijk'],['CSS support','Gemiddeld']]}
   };
 
   function toast(message){
@@ -777,7 +751,7 @@
       injected += `img{visibility:hidden!important;background:#cbd5e1!important;min-height:40px!important}`;
     }
 
-    if(client === 'outlook'){
+    if(['outlook2013','outlook2016','outlook365'].includes(client)){
       injected += `
         body{font-family:Arial,sans-serif!important}
         div[style*="border-radius"],table[style*="border-radius"],td[style*="border-radius"],a[style*="border-radius"]{
