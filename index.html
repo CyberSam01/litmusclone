@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MailScope — E-mail Preview & QA</title>
+<style>
+  :root{
+    --bg:#0f172a;
+    --panel:#111827;
+    --panel-2:#172033;
+    --line:#273449;
+    --text:#e5e7eb;
+    --muted:#94a3b8;
+    --accent:#7c3aed;
+    --accent-2:#8b5cf6;
+    --ok:#22c55e;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --white:#ffffff;
+    --shadow:0 18px 50px rgba(0,0,0,.28);
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  a{color:inherit}
+
+  .app{
+    min-height:100vh;
+    display:grid;
+    grid-template-rows:auto 1fr;
+  }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:14px 18px;
+    background:rgba(15,23,42,.92);
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    z-index:30;
+    backdrop-filter:blur(14px);
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+  }
+
+  .logo{
+    width:38px;
+    height:38px;
+    border-radius:12px;
+    display:grid;
+    place-items:center;
+    background:linear-gradient(135deg,var(--accent),#2563eb);
+    box-shadow:0 10px 28px rgba(124,58,237,.35);
+    font-weight:800;
+  }
+
+  .brand-copy strong{display:block;font-size:15px}
+  .brand-copy span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  .btn{
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:10px;
+    transition:.18s ease;
+  }
+
+  .btn:hover{transform:translateY(-1px);border-color:#3b4b67}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));border-color:transparent;color:white}
+  .btn.danger{color:#fecaca}
+  .btn.small{padding:7px 9px;font-size:12px}
+
+  main{
+    min-height:0;
+    display:grid;
+    grid-template-columns:minmax(320px,42%) 1fr;
+  }
+
+  .editor-pane,.workspace{min-height:0}
+  .editor-pane{
+    border-right:1px solid var(--line);
+    background:#0b1220;
+    display:grid;
+    grid-template-rows:auto 1fr auto;
+  }
+
+  .pane-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:11px 13px;
+    border-bottom:1px solid var(--line);
+    background:#101827;
+  }
+
+  .tabs{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  .tab{
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--muted);
+    padding:7px 10px;
+    border-radius:8px;
+  }
+
+  .tab.active{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+
+  .editor-wrap{position:relative;min-height:0}
+  #source{
+    width:100%;
+    height:100%;
+    resize:none;
+    border:0;
+    outline:0;
+    padding:18px;
+    color:#dbeafe;
+    background:#08111f;
+    line-height:1.55;
+    tab-size:2;
+    font-family:"Cascadia Code","SFMono-Regular",Consolas,monospace;
+    font-size:13px;
+  }
+
+  .editor-footer{
+    padding:9px 13px;
+    border-top:1px solid var(--line);
+    background:#101827;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    color:var(--muted);
+    font-size:12px;
+  }
+
+  .workspace{
+    background:#111827;
+    display:grid;
+    grid-template-rows:auto 1fr;
+  }
+
+  .workspace-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:11px 13px;
+    border-bottom:1px solid var(--line);
+    background:#101827;
+    flex-wrap:wrap;
+  }
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  select,.field{
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:9px;
+    padding:8px 10px;
+  }
+
+  .switch{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  .switch input{accent-color:var(--accent)}
+
+  .workspace-grid{
+    min-height:0;
+    display:grid;
+    grid-template-columns:1fr 320px;
+  }
+
+  .preview-stage{
+    min-width:0;
+    min-height:0;
+    overflow:auto;
+    padding:24px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    background:
+      linear-gradient(45deg,#111827 25%,transparent 25%),
+      linear-gradient(-45deg,#111827 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#111827 75%),
+      linear-gradient(-45deg,transparent 75%,#111827 75%);
+    background-size:24px 24px;
+    background-position:0 0,0 12px,12px -12px,-12px 0;
+  }
+
+  .device{
+    width:100%;
+    max-width:780px;
+    background:#d9dde5;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow);
+    transition:.2s ease;
+  }
+
+  .device.mobile{max-width:390px}
+  .device.tablet{max-width:600px}
+
+  .device-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    color:#475569;
+    font-size:12px;
+    margin-bottom:12px;
+  }
+
+  .dots{display:flex;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#94a3b8}
+
+  .mail-shell{
+    border-radius:12px;
+    overflow:hidden;
+    background:white;
+    border:1px solid rgba(0,0,0,.08);
+  }
+
+  .mail-client-bar{
+    padding:11px 13px;
+    border-bottom:1px solid #e5e7eb;
+    background:#f8fafc;
+    color:#334155;
+    font-size:12px;
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .mail-client-bar strong{font-size:13px}
+
+  iframe{
+    width:100%;
+    height:720px;
+    border:0;
+    background:white;
+    display:block;
+  }
+
+  .side-panel{
+    border-left:1px solid var(--line);
+    background:#0f172a;
+    min-height:0;
+    overflow:auto;
+  }
+
+  .side-section{
+    border-bottom:1px solid var(--line);
+    padding:14px;
+  }
+
+  .side-section h3{
+    font-size:13px;
+    margin:0 0 10px;
+    color:#f8fafc;
+  }
+
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+
+  .metric{
+    padding:10px;
+    border-radius:10px;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    text-align:center;
+  }
+
+  .metric strong{display:block;font-size:18px}
+  .metric span{display:block;font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.07em}
+
+  .check-list{display:grid;gap:8px}
+  .check{
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    border-radius:10px;
+    padding:10px;
+  }
+
+  .check-head{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+  }
+
+  .badge{
+    min-width:20px;
+    height:20px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:11px;
+    color:white;
+    margin-top:1px;
+  }
+
+  .badge.ok{background:var(--ok)}
+  .badge.warn{background:var(--warn)}
+  .badge.bad{background:var(--bad)}
+
+  .check strong{font-size:12px;display:block}
+  .check p{font-size:11px;color:var(--muted);margin:4px 0 0;line-height:1.45;word-break:break-word}
+
+  .compat-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:11px;
+  }
+
+  .compat-table td{
+    padding:7px 0;
+    border-bottom:1px solid var(--line);
+    color:var(--muted);
+  }
+
+  .compat-table td:last-child{text-align:right;color:var(--text)}
+  .status-pill{
+    display:inline-block;
+    padding:3px 7px;
+    border-radius:999px;
+    font-size:10px;
+    background:#1f2937;
+  }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:#020617;
+    border:1px solid var(--line);
+    box-shadow:var(--shadow);
+    color:white;
+    padding:10px 14px;
+    border-radius:10px;
+    opacity:0;
+    pointer-events:none;
+    transition:.2s ease;
+    z-index:100;
+  }
+
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .modal{
+    position:fixed;
+    inset:0;
+    background:rgba(2,6,23,.74);
+    display:none;
+    place-items:center;
+    z-index:80;
+    padding:20px;
+  }
+
+  .modal.open{display:grid}
+  .modal-card{
+    width:min(720px,100%);
+    max-height:80vh;
+    overflow:auto;
+    background:#0f172a;
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+  }
+
+  .modal-head{
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+
+  .modal-body{padding:16px}
+  .modal-body pre{
+    white-space:pre-wrap;
+    background:#08111f;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px;
+    color:#cbd5e1;
+    font-size:12px;
+    overflow:auto;
+  }
+
+  @media (max-width:1050px){
+    main{grid-template-columns:1fr}
+    .editor-pane{height:48vh;border-right:0;border-bottom:1px solid var(--line)}
+    .workspace{height:calc(100vh - 48vh - 68px)}
+  }
+
+  @media (max-width:760px){
+    .workspace-grid{grid-template-columns:1fr}
+    .side-panel{display:none}
+    header{align-items:flex-start}
+    .brand-copy span{display:none}
+    .preview-stage{padding:12px}
+    .device{padding:10px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">M</div>
+      <div class="brand-copy">
+        <strong>MailScope</strong>
+        <span>Lokale e-mailpreview & kwaliteitscontrole</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn small" id="loadSample">Voorbeeld laden</button>
+      <button class="btn small" id="copyHtml">HTML kopiëren</button>
+      <button class="btn small" id="downloadHtml">HTML downloaden</button>
+      <button class="btn small primary" id="runChecks">Test uitvoeren</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="editor-pane">
+      <div class="pane-toolbar">
+        <div class="tabs">
+          <button class="tab active">HTML</button>
+          <button class="tab" id="viewPlain">Tekstweergave</button>
+        </div>
+        <button class="btn small danger" id="clearEditor">Wissen</button>
+      </div>
+
+      <div class="editor-wrap">
+        <textarea id="source" spellcheck="false" aria-label="HTML broncode"></textarea>
+      </div>
+
+      <div class="editor-footer">
+        <span id="charCount">0 tekens</span>
+        <span>Automatische preview actief</span>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="workspace-toolbar">
+        <div class="controls">
+          <select id="client">
+            <option value="apple">Apple Mail</option>
+            <option value="gmail">Gmail Web</option>
+            <option value="outlook">Outlook Desktop</option>
+            <option value="outlookweb">Outlook Web</option>
+            <option value="yahoo">Yahoo Mail</option>
+          </select>
+
+          <select id="deviceMode">
+            <option value="desktop">Desktop 780 px</option>
+            <option value="tablet">Tablet 600 px</option>
+            <option value="mobile">Mobiel 390 px</option>
+          </select>
+
+          <label class="switch">
+            <input type="checkbox" id="darkMode">
+            Dark mode
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" id="blockImages">
+            Afbeeldingen blokkeren
+          </label>
+        </div>
+
+        <div class="controls">
+          <label class="switch">
+            Zoom
+            <select id="zoom">
+              <option value="1">100%</option>
+              <option value=".85">85%</option>
+              <option value=".7">70%</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="workspace-grid">
+        <div class="preview-stage">
+          <div class="device" id="device">
+            <div class="device-bar">
+              <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+              <span id="viewportLabel">780 × 720</span>
+            </div>
+            <div class="mail-shell">
+              <div class="mail-client-bar">
+                <div>
+                  <strong id="clientName">Apple Mail</strong><br>
+                  <span>Onderwerp: Voorbeeldmail</span>
+                </div>
+                <span id="modeLabel">Light</span>
+              </div>
+              <iframe id="preview" sandbox="allow-same-origin"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <div class="side-section">
+            <h3>Testresultaat</h3>
+            <div class="summary">
+              <div class="metric"><strong id="errorsCount">0</strong><span>Fouten</span></div>
+              <div class="metric"><strong id="warningsCount">0</strong><span>Waarschuwingen</span></div>
+              <div class="metric"><strong id="passedCount">0</strong><span>Geslaagd</span></div>
+            </div>
+          </div>
+
+          <div class="side-section">
+            <h3>Controlepunten</h3>
+            <div class="check-list" id="checks"></div>
+          </div>
+
+          <div class="side-section">
+            <h3>Clientsimulatie</h3>
+            <table class="compat-table" id="compatibility"></table>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="plainModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <strong>Tekstweergave</strong>
+      <button class="btn small" id="closePlain">Sluiten</button>
+    </div>
+    <div class="modal-body">
+      <pre id="plainText"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const els = {
+    source: document.getElementById('source'),
+    preview: document.getElementById('preview'),
+    client: document.getElementById('client'),
+    clientName: document.getElementById('clientName'),
+    deviceMode: document.getElementById('deviceMode'),
+    device: document.getElementById('device'),
+    darkMode: document.getElementById('darkMode'),
+    blockImages: document.getElementById('blockImages'),
+    zoom: document.getElementById('zoom'),
+    viewportLabel: document.getElementById('viewportLabel'),
+    modeLabel: document.getElementById('modeLabel'),
+    checks: document.getElementById('checks'),
+    compatibility: document.getElementById('compatibility'),
+    errorsCount: document.getElementById('errorsCount'),
+    warningsCount: document.getElementById('warningsCount'),
+    passedCount: document.getElementById('passedCount'),
+    charCount: document.getElementById('charCount'),
+    toast: document.getElementById('toast'),
+    plainModal: document.getElementById('plainModal'),
+    plainText: document.getElementById('plainText')
+  };
+
+  const sample = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voorbeeldmail</title>
+<style>
+  body{margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif}
+  table{border-collapse:collapse}
+  img{display:block;max-width:100%;height:auto;border:0}
+  .wrapper{width:100%;background:#f1f5f9;padding:28px 12px}
+  .container{width:100%;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden}
+  .content{padding:36px}
+  h1{margin:0 0 16px;font-size:30px;line-height:1.2;color:#111827}
+  p{margin:0 0 18px;font-size:16px;line-height:1.6;color:#475569}
+  .button{display:inline-block;background:#7c3aed;color:#ffffff!important;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold}
+  .footer{padding:20px 36px;background:#f8fafc;font-size:12px;color:#64748b}
+  @media(max-width:620px){
+    .content{padding:24px!important}
+    h1{font-size:25px!important}
+  }
+</style>
+</head>
+<body>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">
+    Dit is de preheader van de voorbeeldmail.
+  </div>
+  <table role="presentation" width="100%" class="wrapper">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" class="container">
+          <tr>
+            <td>
+              <img src="https://picsum.photos/1200/520" width="600" alt="Kleurrijke voorbeeldafbeelding">
+            </td>
+          </tr>
+          <tr>
+            <td class="content">
+              <h1>Test je e-mail vóór verzending</h1>
+              <p>Bekijk hoe je mailing zich gedraagt op desktop, tablet, mobiel en in verschillende gesimuleerde e-mailclients.</p>
+              <p>
+                <a class="button" href="https://example.com?utm_source=newsletter&utm_medium=email&utm_campaign=test">Bekijk het voorbeeld</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td class="footer">
+              Je ontvangt deze mail omdat je bent ingeschreven.
+              <a href="https://example.com/unsubscribe">Uitschrijven</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const clients = {
+    apple: {
+      name: 'Apple Mail',
+      notes: [
+        ['Media queries', 'Goed'],
+        ['Webfonts', 'Meestal goed'],
+        ['Background images', 'Goed'],
+        ['CSS support', 'Hoog']
+      ]
+    },
+    gmail: {
+      name: 'Gmail Web',
+      notes: [
+        ['Media queries', 'Goed'],
+        ['Webfonts', 'Beperkt'],
+        ['Background images', 'Redelijk'],
+        ['CSS support', 'Gemiddeld']
+      ]
+    },
+    outlook: {
+      name: 'Outlook Desktop',
+      notes: [
+        ['Media queries', 'Beperkt'],
+        ['Webfonts', 'Beperkt'],
+        ['Background images', 'VML nodig'],
+        ['CSS support', 'Laag']
+      ]
+    },
+    outlookweb: {
+      name: 'Outlook Web',
+      notes: [
+        ['Media queries', 'Goed'],
+        ['Webfonts', 'Beperkt'],
+        ['Background images', 'Redelijk'],
+        ['CSS support', 'Gemiddeld']
+      ]
+    },
+    yahoo: {
+      name: 'Yahoo Mail',
+      notes: [
+        ['Media queries', 'Goed'],
+        ['Webfonts', 'Beperkt'],
+        ['Background images', 'Redelijk'],
+        ['CSS support', 'Gemiddeld']
+      ]
+    }
+  };
+
+  function toast(message){
+    els.toast.textContent = message;
+    els.toast.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => els.toast.classList.remove('show'), 1800);
+  }
+
+  function getDocument(){
+    return new DOMParser().parseFromString(els.source.value, 'text/html');
+  }
+
+  function buildPreview(){
+    let html = els.source.value;
+    const dark = els.darkMode.checked;
+    const blockImages = els.blockImages.checked;
+    const client = els.client.value;
+
+    let injected = `<style id="mailscope-runtime">
+      html,body{min-height:100%!important}
+      body{transition:background .15s ease,color .15s ease}
+    `;
+
+    if(dark){
+      injected += `
+        body{background:#111827!important;color:#e5e7eb!important}
+        table,td,div{border-color:#334155}
+        [style*="background:#ffffff"],[style*="background: #ffffff"],
+        [style*="background:white"],[style*="background: white"]{
+          background:#1f2937!important;
+        }
+        [style*="color:#111827"],[style*="color: #111827"],
+        [style*="color:#000"],[style*="color: #000"]{
+          color:#f8fafc!important;
+        }
+        p,span,td{color-scheme:dark}
+      `;
+    }
+
+    if(blockImages){
+      injected += `img{visibility:hidden!important;background:#cbd5e1!important;min-height:40px!important}`;
+    }
+
+    if(client === 'outlook'){
+      injected += `
+        body{font-family:Arial,sans-serif!important}
+        div[style*="border-radius"],table[style*="border-radius"],td[style*="border-radius"],a[style*="border-radius"]{
+          border-radius:0!important;
+        }
+        img{height:auto}
+      `;
+    }
+
+    if(client === 'gmail'){
+      injected += `style[data-unsupported]{display:none!important}`;
+    }
+
+    injected += `</style>`;
+
+    if(/<head[\s>]/i.test(html)){
+      html = html.replace(/<head([^>]*)>/i, `<head$1>${injected}`);
+    }else{
+      html = injected + html;
+    }
+
+    els.preview.srcdoc = html;
+    els.charCount.textContent = `${els.source.value.length.toLocaleString('nl-NL')} tekens`;
+  }
+
+  function renderCompatibility(){
+    const client = clients[els.client.value];
+    els.clientName.textContent = client.name;
+    els.compatibility.innerHTML = client.notes.map(([label,status]) => `
+      <tr>
+        <td>${label}</td>
+        <td><span class="status-pill">${status}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function updateDevice(){
+    const mode = els.deviceMode.value;
+    els.device.className = 'device' + (mode === 'desktop' ? '' : ' ' + mode);
+
+    const widths = {desktop:780,tablet:600,mobile:390};
+    els.viewportLabel.textContent = `${widths[mode]} × 720`;
+  }
+
+  function updateModeLabel(){
+    els.modeLabel.textContent = els.darkMode.checked ? 'Dark' : 'Light';
+  }
+
+  function severityIcon(type){
+    return type === 'ok' ? '✓' : type === 'warn' ? '!' : '×';
+  }
+
+  function runChecks(){
+    const doc = getDocument();
+    const results = [];
+    const html = els.source.value;
+
+    const title = doc.querySelector('title');
+    results.push({
+      type: title && title.textContent.trim() ? 'ok' : 'warn',
+      title: 'Documenttitel',
+      text: title && title.textContent.trim()
+        ? `Titel gevonden: "${title.textContent.trim()}"`
+        : 'Geen <title> gevonden.'
+    });
+
+    const viewport = doc.querySelector('meta[name="viewport"]');
+    results.push({
+      type: viewport ? 'ok' : 'warn',
+      title: 'Mobiele viewport',
+      text: viewport ? 'Viewportmeta aanwezig.' : 'Voeg een viewportmeta toe voor mobiel.'
+    });
+
+    const images = [...doc.querySelectorAll('img')];
+    const missingAlt = images.filter(img => !img.hasAttribute('alt'));
+    results.push({
+      type: missingAlt.length ? 'warn' : 'ok',
+      title: 'Alt-teksten',
+      text: images.length
+        ? `${images.length - missingAlt.length} van ${images.length} afbeeldingen hebben een alt-tekst.`
+        : 'Geen afbeeldingen gevonden.'
+    });
+
+    const links = [...doc.querySelectorAll('a[href]')];
+    const unsafeLinks = links.filter(a => {
+      const href = (a.getAttribute('href') || '').trim();
+      return href && !href.startsWith('https://') && !href.startsWith('mailto:') &&
+             !href.startsWith('tel:') && !href.startsWith('#') && !href.startsWith('{{');
+    });
+    results.push({
+      type: unsafeLinks.length ? 'warn' : 'ok',
+      title: 'Veilige links',
+      text: unsafeLinks.length
+        ? `${unsafeLinks.length} link(s) gebruiken geen HTTPS.`
+        : `${links.length} link(s) gecontroleerd; geen onveilige URL's gevonden.`
+    });
+
+    const emptyHref = links.filter(a => !a.getAttribute('href') || a.getAttribute('href') === '#');
+    results.push({
+      type: emptyHref.length ? 'bad' : 'ok',
+      title: 'Lege links',
+      text: emptyHref.length
+        ? `${emptyHref.length} link(s) hebben een lege of # URL.`
+        : 'Geen lege links gevonden.'
+    });
+
+    const tables = [...doc.querySelectorAll('table')];
+    const layoutTablesWithoutRole = tables.filter(t => !t.hasAttribute('role'));
+    results.push({
+      type: layoutTablesWithoutRole.length ? 'warn' : 'ok',
+      title: 'Presentatietabellen',
+      text: layoutTablesWithoutRole.length
+        ? `${layoutTablesWithoutRole.length} tabel(len) missen role="presentation".`
+        : 'Alle tabellen hebben een role-attribuut.'
+    });
+
+    const css = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n') + '\n' +
+      [...doc.querySelectorAll('[style]')].map(el => el.getAttribute('style')).join('\n');
+
+    const risky = [];
+    if(/display\s*:\s*flex/i.test(css)) risky.push('flexbox');
+    if(/display\s*:\s*grid/i.test(css)) risky.push('CSS grid');
+    if(/position\s*:\s*(fixed|absolute)/i.test(css)) risky.push('positionering');
+    if(/background-image/i.test(css) && !/v:rect|v:fill|xmlns:v/i.test(html)) risky.push('achtergrondafbeeldingen zonder VML');
+    if(/@font-face/i.test(css)) risky.push('webfonts');
+
+    results.push({
+      type: risky.length ? 'warn' : 'ok',
+      title: 'Outlook-compatibiliteit',
+      text: risky.length
+        ? `Mogelijke aandachtspunten: ${risky.join(', ')}.`
+        : 'Geen veelvoorkomende Outlook-risico’s gevonden.'
+    });
+
+    const unsub = links.some(a => /unsubscribe|uitschrijven|afmelden/i.test(
+      (a.textContent || '') + ' ' + (a.getAttribute('href') || '')
+    ));
+    results.push({
+      type: unsub ? 'ok' : 'warn',
+      title: 'Uitschrijflink',
+      text: unsub ? 'Mogelijke uitschrijflink gevonden.' : 'Geen duidelijke uitschrijflink gevonden.'
+    });
+
+    const preheader = [...doc.querySelectorAll('div,span,td')].some(el => {
+      const style = (el.getAttribute('style') || '').toLowerCase();
+      return style.includes('display:none') || style.includes('max-height:0');
+    });
+    results.push({
+      type: preheader ? 'ok' : 'warn',
+      title: 'Preheader',
+      text: preheader ? 'Verborgen preheader-achtige content gevonden.' : 'Geen herkenbare verborgen preheader gevonden.'
+    });
+
+    const lang = doc.documentElement.getAttribute('lang');
+    results.push({
+      type: lang ? 'ok' : 'warn',
+      title: 'Taalinstelling',
+      text: lang ? `Documenttaal: ${lang}.` : 'Geen lang-attribuut op <html>.'
+    });
+
+    renderChecks(results);
+    toast('Test voltooid');
+  }
+
+  function renderChecks(results){
+    els.checks.innerHTML = results.map(item => `
+      <div class="check">
+        <div class="check-head">
+          <span class="badge ${item.type}">${severityIcon(item.type)}</span>
+          <div>
+            <strong>${item.title}</strong>
+            <p>${item.text}</p>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    els.errorsCount.textContent = results.filter(r => r.type === 'bad').length;
+    els.warningsCount.textContent = results.filter(r => r.type === 'warn').length;
+    els.passedCount.textContent = results.filter(r => r.type === 'ok').length;
+  }
+
+  function debounce(fn, delay=250){
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  const refresh = debounce(() => {
+    buildPreview();
+    runChecks();
+  }, 350);
+
+  els.source.addEventListener('input', refresh);
+
+  els.client.addEventListener('change', () => {
+    renderCompatibility();
+    buildPreview();
+  });
+
+  els.deviceMode.addEventListener('change', updateDevice);
+
+  els.darkMode.addEventListener('change', () => {
+    updateModeLabel();
+    buildPreview();
+  });
+
+  els.blockImages.addEventListener('change', buildPreview);
+
+  els.zoom.addEventListener('change', () => {
+    els.device.style.transform = `scale(${els.zoom.value})`;
+    els.device.style.transformOrigin = 'top center';
+  });
+
+  document.getElementById('loadSample').addEventListener('click', () => {
+    els.source.value = sample;
+    buildPreview();
+    runChecks();
+    toast('Voorbeeld geladen');
+  });
+
+  document.getElementById('copyHtml').addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(els.source.value);
+      toast('HTML gekopieerd');
+    }catch{
+      els.source.select();
+      document.execCommand('copy');
+      toast('HTML gekopieerd');
+    }
+  });
+
+  document.getElementById('downloadHtml').addEventListener('click', () => {
+    const blob = new Blob([els.source.value], {type:'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'email-template.html';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('HTML gedownload');
+  });
+
+  document.getElementById('runChecks').addEventListener('click', runChecks);
+
+  document.getElementById('clearEditor').addEventListener('click', () => {
+    els.source.value = '';
+    buildPreview();
+    runChecks();
+    toast('Editor gewist');
+  });
+
+  document.getElementById('viewPlain').addEventListener('click', () => {
+    const doc = getDocument();
+    els.plainText.textContent = (doc.body.innerText || '').replace(/\n{3,}/g, '\n\n').trim() || 'Geen tekstinhoud gevonden.';
+    els.plainModal.classList.add('open');
+  });
+
+  document.getElementById('closePlain').addEventListener('click', () => {
+    els.plainModal.classList.remove('open');
+  });
+
+  els.plainModal.addEventListener('click', e => {
+    if(e.target === els.plainModal) els.plainModal.classList.remove('open');
+  });
+
+  els.source.addEventListener('keydown', e => {
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const start = els.source.selectionStart;
+      const end = els.source.selectionEnd;
+      els.source.value = els.source.value.slice(0,start) + '  ' + els.source.value.slice(end);
+      els.source.selectionStart = els.source.selectionEnd = start + 2;
+      refresh();
+    }
+  });
+
+  els.source.value = sample;
+  renderCompatibility();
+  updateDevice();
+  updateModeLabel();
+  buildPreview();
+  runChecks();
+})();
+</script>
+</body>
+</html>
