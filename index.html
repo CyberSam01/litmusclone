@@ -561,6 +561,7 @@
           <div class="side-section">
             <h3>Clientsimulatie</h3>
             <table class="compat-table" id="compatibility"></table>
+            <p id="simulationNote" style="margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.45">Browsergebaseerde simulatie; dit is geen echte client-screenshot.</p>
           </div>
           <div class="side-section">
             <h3>Beschikbare opties</h3>
@@ -720,11 +721,86 @@
     return new DOMParser().parseFromString(els.source.value, 'text/html');
   }
 
+
+  function simulateOutlookHtml(source, client){
+    if(!['outlook2013','outlook2016','outlook365'].includes(client)) return source;
+
+    let processed = source
+      .replace(/<!--\s*\[if\s+mso\]\s*>/gi, '')
+      .replace(/<!--\s*\[if\s+gte\s+mso\s+\d+\]\s*>/gi, '')
+      .replace(/<!\s*\[endif\]\s*-->/gi, '')
+      .replace(/<!--\s*\[if\s+!mso\]\s*><!-->/gi, '<!-- NONMSO_START -->')
+      .replace(/<!--<!\s*\[endif\]\s*-->/gi, '<!-- NONMSO_END -->')
+      .replace(/<!-- NONMSO_START -->[\s\S]*?<!-- NONMSO_END -->/gi, '');
+
+    const doc = new DOMParser().parseFromString(processed, 'text/html');
+
+    doc.querySelectorAll('style').forEach(style => {
+      style.textContent = style.textContent
+        .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
+        .replace(/object-fit\s*:[^;}{]+;?/gi, '')
+        .replace(/object-position\s*:[^;}{]+;?/gi, '')
+        .replace(/display\s*:\s*(flex|grid|inline-flex|inline-grid)\s*;?/gi, 'display:block;')
+        .replace(/position\s*:\s*(absolute|fixed|sticky)\s*;?/gi, 'position:static;')
+        .replace(/border-radius\s*:[^;}{]+;?/gi, '')
+        .replace(/box-shadow\s*:[^;}{]+;?/gi, '');
+    });
+
+    doc.querySelectorAll('[style]').forEach(el => {
+      let style = el.getAttribute('style') || '';
+      style = style
+        .replace(/object-fit\s*:[^;]+;?/gi, '')
+        .replace(/object-position\s*:[^;]+;?/gi, '')
+        .replace(/display\s*:\s*(flex|grid|inline-flex|inline-grid)\s*;?/gi, 'display:block;')
+        .replace(/position\s*:\s*(absolute|fixed|sticky)\s*;?/gi, 'position:static;')
+        .replace(/border-radius\s*:[^;]+;?/gi, '')
+        .replace(/box-shadow\s*:[^;]+;?/gi, '')
+        .replace(/max-width\s*:\s*100%\s*;?/gi, '');
+      el.setAttribute('style', style);
+    });
+
+    doc.querySelectorAll('img').forEach(img => {
+      const widthAttr = img.getAttribute('width');
+      const heightAttr = img.getAttribute('height');
+      let style = img.getAttribute('style') || '';
+
+      style = style
+        .replace(/object-fit\s*:[^;]+;?/gi, '')
+        .replace(/object-position\s*:[^;]+;?/gi, '')
+        .replace(/max-width\s*:[^;]+;?/gi, '')
+        .replace(/width\s*:[^;]+;?/gi, '')
+        .replace(/height\s*:[^;]+;?/gi, '');
+
+      if(widthAttr && /^\d+$/.test(widthAttr)){
+        style += `width:${widthAttr}px!important;`;
+      }
+      if(heightAttr && /^\d+$/.test(heightAttr)){
+        style += `height:${heightAttr}px!important;`;
+      }else{
+        style += 'height:auto!important;';
+      }
+      img.setAttribute('style', style);
+    });
+
+    doc.querySelectorAll('table').forEach(table => {
+      const widthAttr = table.getAttribute('width');
+      let style = table.getAttribute('style') || '';
+      if(widthAttr && /^\d+$/.test(widthAttr) && !/width\s*:/i.test(style)){
+        style += `width:${widthAttr}px;`;
+      }
+      table.setAttribute('style', style);
+    });
+
+    return '<!doctype html>\n' + doc.documentElement.outerHTML;
+  }
+
   function buildPreview(){
     let html = els.source.value;
     const dark = els.darkMode.checked;
     const blockImages = els.blockImages.checked;
     const client = els.client.value;
+
+    html = simulateOutlookHtml(html, client);
 
     let injected = `<style id="mailscope-runtime">
       html,body{min-height:100%!important}
@@ -757,7 +833,9 @@
         div[style*="border-radius"],table[style*="border-radius"],td[style*="border-radius"],a[style*="border-radius"]{
           border-radius:0!important;
         }
-        img{height:auto}
+        img{font-family:Arial,sans-serif!important}
+        table{border-collapse:collapse!important}
+        td{mso-line-height-rule:exactly}
       `;
     }
 
@@ -786,6 +864,13 @@
         <td><span class="status-pill">${status}</span></td>
       </tr>
     `).join('');
+
+    const note = document.getElementById('simulationNote');
+    if(note){
+      note.textContent = ['outlook2013','outlook2016','outlook365'].includes(els.client.value)
+        ? 'Outlook-simulatie: object-fit, mediaqueries, flex/grid en moderne CSS worden verwijderd; HTML width/height en MSO-blokken krijgen voorrang.'
+        : 'Browsergebaseerde simulatie; dit is geen echte client-screenshot.';
+    }
   }
 
   function updateDevice(){
