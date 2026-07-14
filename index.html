@@ -225,7 +225,7 @@
 
   .device{
     width:100%;
-    max-width:780px;
+    max-width:1500px;
     background:#d9dde5;
     border-radius:18px;
     padding:18px;
@@ -495,7 +495,7 @@
           </select>
 
           <select id="deviceMode">
-            <option value="desktop">Desktop 780 px</option>
+            <option value="desktop">Desktop 1500 px</option>
             <option value="tablet">Tablet 600 px</option>
             <option value="mobile">Mobiel 390 px</option>
           </select>
@@ -528,7 +528,7 @@
           <div class="device" id="device">
             <div class="device-bar">
               <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-              <span id="viewportLabel">780 × 720</span>
+              <span id="viewportLabel">1500 × 720</span>
             </div>
             <div class="mail-shell">
               <div class="mail-client-bar">
@@ -877,7 +877,7 @@
     const mode = els.deviceMode.value;
     els.device.className = 'device' + (mode === 'desktop' ? '' : ' ' + mode);
 
-    const widths = {desktop:780,tablet:600,mobile:390};
+    const widths = {desktop:1500,tablet:600,mobile:390};
     els.viewportLabel.textContent = `${widths[mode]} × 720`;
   }
 
